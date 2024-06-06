@@ -12,3 +12,4 @@ def memphis_safe():
     safe = Safe(args.DATASET)
     safe.tag(args.threshold, args.export)
     safe.split(args.rate, args.export)
+    safe.clean(args.export)

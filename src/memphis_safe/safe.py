@@ -1,4 +1,4 @@
-from pandas import read_csv
+from pandas import read_csv, Categorical, get_dummies
 from random import sample
 
 class Safe:
@@ -38,6 +38,7 @@ class Safe:
 
         self.train = self.df[(self.df["scenario"].isin(train_idx)) & (self.df["malicious"] == False)].reset_index(drop=True)
         self.test  = self.df[(self.df["scenario"].isin(test_idx))  & (self.df["malicious"] ==  True)].reset_index(drop=True)
+        del self.df
         
         if export:
             tokens = self.name.split("/")
@@ -55,3 +56,20 @@ class Safe:
         print("\nScenario with most anomalies: {}".format(test_idx[0]))
         print("Scenario distribution:")
         print(self.test[(self.test["scenario"] == test_idx[0])]["anomaly"].value_counts())
+
+    def clean(self, export=False):
+        self.train = self.train[["rel_timestamp", "prod", "cons", "hops", "size", "total_time"]]
+        self.train["prod"] = Categorical(self.train["prod"])
+        self.train["cons"] = Categorical(self.train["cons"])
+        self.train = get_dummies(self.train)
+
+        self.train_X = self.train.drop(columns=["total_time"])
+        self.train_y = self.train["total_time"]
+
+        if export:
+            tokens = self.name.split("/")
+            name   = tokens[-1].split(".")[-2]
+            path   = "/".join(tokens[0:-1])
+            self.train.to_csv("{}/{}_train_clean.csv".format(path, name), index=False)
+
+        del self.train
