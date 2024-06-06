@@ -10,6 +10,4 @@ def memphis_safe():
     args = parser.parse_args()
 
     safe = Safe(args.DATASET)
-    safe.tag(args.threshold, args.export)
-    safe.split(args.rate, args.export)
-    safe.clean(args.export)
+    train = safe.wrangle(args.threshold, args.rate, args.export)

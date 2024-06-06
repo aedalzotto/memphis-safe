@@ -8,7 +8,14 @@ class Safe:
         # self.df["anomaly"] = False
         self.scenarios = list(set(self.df['scenario'].tolist()))
 
-    def tag(self, threshold, export=False):
+    def wrangle(self, threshold, rate, export=False):
+        if self.df is not None:
+            self.__tag(threshold, export)
+            self.__split(rate, export)
+            self.__clean(export)
+        return (self.train_X, self.train_y)
+
+    def __tag(self, threshold, export=False):
         # No point in parallelizing
         for scenario in self.scenarios:
             lat_n = self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] ==  True)]["total_time"].values
@@ -24,7 +31,7 @@ class Safe:
 
         print("Dataset has {} anomalies".format(self.df["anomaly"].sum()))
 
-    def split(self, rate, export=False):
+    def __split(self, rate, export=False):
         anomalies = {}
         for scenario in self.scenarios:
             anomalies[scenario] = self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] == True)]["anomaly"].sum()
@@ -57,7 +64,7 @@ class Safe:
         print("Scenario distribution:")
         print(self.test[(self.test["scenario"] == test_idx[0])]["anomaly"].value_counts())
 
-    def clean(self, export=False):
+    def __clean(self, export=False):
         self.train = self.train[["rel_timestamp", "prod", "cons", "hops", "size", "total_time"]]
         self.train["prod"] = Categorical(self.train["prod"])
         self.train["cons"] = Categorical(self.train["cons"])
