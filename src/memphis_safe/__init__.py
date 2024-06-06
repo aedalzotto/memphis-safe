@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from .safe import Safe
+from .preprocess.data import Data
 
 def memphis_safe():
     parser = ArgumentParser(description="Memphis Security Anomaly Forecasting Engine")
@@ -9,5 +9,5 @@ def memphis_safe():
     parser.add_argument("-e", "--export",    help="Export partial datasets",                  action="store_true"     )
     args = parser.parse_args()
 
-    safe = Safe(args.DATASET)
-    train = safe.wrangle(args.threshold, args.rate, args.export)
+    data = Data(args.DATASET)
+    train = data.wrangle(args.threshold, args.rate, args.export)

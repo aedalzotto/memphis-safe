@@ -1,7 +1,7 @@
 from pandas import read_csv, Categorical, get_dummies
 from random import sample
 
-class Safe:
+class Data:
     def __init__(self, dataset):
         self.name = dataset
         self.df   = read_csv(dataset)
