@@ -1,7 +1,7 @@
 from numpy import sqrt
 from xgboost import XGBRegressor
 from sklearn.model_selection import cross_val_score
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import recall_score, precision_score, f1_score
 
 class XGModel:
     def __init__(self, data):
@@ -23,3 +23,13 @@ class XGModel:
         print("{}-fold cross-validation scores:".format(k))
         print(rmse)
 
+    def test(self, test, threshold):
+        X = test[0]
+        y = test[1]
+        y_pred = self.model.predict(X)
+        tag = y["anomaly"].astype('bool')
+        tag_pred = abs(y_pred - y["total_time"]) / y["total_time"] > threshold
+
+        print("\nTest recall:    {}".format(   recall_score(tag, tag_pred)))
+        print(  "Test precision: {}".format(precision_score(tag, tag_pred)))
+        print(  "Test F1:        {}".format(       f1_score(tag, tag_pred)))

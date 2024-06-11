@@ -13,7 +13,7 @@ class Data:
             self.__tag(threshold, export)
             self.__split(rate, export)
             self.__clean(export)
-        return (self.train_X, self.train_y)
+        return (self.train_X, self.train_y), (self.test_X, self.test_y)
 
     def __tag(self, threshold, export=False):
         # No point in parallelizing
@@ -68,15 +68,25 @@ class Data:
         self.train = self.train[["rel_timestamp", "prod", "cons", "hops", "size", "total_time"]]
         self.train["prod"] = Categorical(self.train["prod"])
         self.train["cons"] = Categorical(self.train["cons"])
-        self.train = get_dummies(self.train)
+        self.train = get_dummies(self.train, columns=["prod", "cons"])
+
+        self.test = self.test[["rel_timestamp", "prod", "cons", "hops", "size", "total_time", "anomaly"]]
+        self.test["prod"] = Categorical(self.test["prod"])
+        self.test["cons"] = Categorical(self.test["cons"])
+        self.test = get_dummies(self.test, columns=["prod", "cons"])
 
         self.train_X = self.train.drop(columns=["total_time"])
         self.train_y = self.train["total_time"]
+
+        self.test_X = self.test.drop(columns=["total_time", "anomaly"])
+        self.test_y = self.test[["anomaly", "total_time"]]
 
         if export:
             tokens = self.name.split("/")
             name   = tokens[-1].split(".")[-2]
             path   = "/".join(tokens[0:-1])
             self.train.to_csv("{}/{}_train_clean.csv".format(path, name), index=False)
+            self.test.to_csv("{}/{}_test_clean.csv".format(path, name), index=False)
 
         del self.train
+        del self.test

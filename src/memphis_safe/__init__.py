@@ -12,7 +12,8 @@ def memphis_safe():
     args = parser.parse_args()
 
     data = Data(args.DATASET)
-    train = data.wrangle(args.threshold, args.rate, args.export)
+    train, test = data.wrangle(args.threshold, args.rate, args.export)
 
     model = XGModel(train)
     model.train(args.cross_val, args.export)
+    model.test(test, args.threshold)
