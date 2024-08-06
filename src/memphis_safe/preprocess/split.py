@@ -1,6 +1,8 @@
 from pandas import read_csv
 from random import sample
 from yaspin import yaspin
+from tqdm import tqdm
+from joblib import Parallel, delayed
 
 class Split:
     def __init__(self, dataset):
@@ -11,16 +13,16 @@ class Split:
             spinner.ok()
 
     def split(self, rate, export=False):
-        anomalies = {}
-        for scenario in self.scenarios:
-            anomalies[scenario] = self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] == True)]["anomaly"].sum()
-        srt_anom = {k: v for k, v in sorted(anomalies.items(), key=lambda item: item[1], reverse=True)}
+        print("Computing anomalies...")
 
-        test_len = min(len(srt_anom), int(len([srt_anom[df] for df in srt_anom if srt_anom[df] > 0])*(1.0 - rate)))
-        test_idx = list(srt_anom)[0:test_len]
+        anomalies = Parallel(n_jobs=-1, require='sharedmem')(delayed(self.__get_anomalies)(scenario) for scenario in tqdm(self.scenarios))
+        anom_indices = sorted(range(len(anomalies)), key=anomalies.__getitem__, reverse=True)
+
+        test_len = min(len(anomalies), int(sum(a > 0 for a in anomalies)*(1.0 - rate)))
+        test_idx = anom_indices[0:test_len]
 
         train_len = int(test_len / (1 - rate) * rate)
-        train_idx = sample(list(srt_anom)[test_len:], train_len)
+        train_idx = sample(anom_indices[test_len:], train_len)
 
         print("\nTrain scenarios: {}".format(len(train_idx)))
         print("Test scenarios: {}".format(len(test_idx)))
@@ -46,3 +48,6 @@ class Split:
         print(self.test[(self.test["scenario"] == test_idx[0])]["anomaly"].value_counts())
 
         return self.train, self.test
+    
+    def __get_anomalies(self, scenario):
+        return self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] == True)]["anomaly"].sum()
