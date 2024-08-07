@@ -10,16 +10,21 @@ class Safe:
             self.model.load_model(model)
             spinner.ok()
 
+        print("\n", end="")
         with yaspin(text="Loading test dataset...") as spinner:
             self.X = read_csv(test)
-            self.y = self.X[["anomaly", "total_time"]]
-            self.X.drop(columns=["anomaly", "total_time"], inplace=True)
             spinner.ok()
     
     def test(self, threshold):
-        y_pred = self.model.predict(self.X)
-        tag = self.y["anomaly"].astype('bool')
-        tag_pred = abs(y_pred - self.y["total_time"]) / self.y["total_time"] > threshold
+        print("\n", end="")
+        with yaspin(text="Testing model...") as spinner:
+            self.y = self.X[["anomaly", "total_time"]]
+            self.X.drop(columns=["anomaly", "total_time"], inplace=True)
+
+            y_pred = self.model.predict(self.X)
+            tag = self.y["anomaly"].astype('bool')
+            tag_pred = abs(y_pred - self.y["total_time"]) / self.y["total_time"] > threshold
+            spinner.ok()
 
         print("\nTest recall:    {}".format(   recall_score(tag, tag_pred)))
         print(  "Test precision: {}".format(precision_score(tag, tag_pred)))
