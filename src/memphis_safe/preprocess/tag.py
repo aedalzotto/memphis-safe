@@ -11,19 +11,19 @@ class Tag:
             self.scenarios = list(set(self.df['scenario'].tolist()))
             spinner.ok()
 
-    def __tag_scenario(df, scenario, threshold):
-        lat_n = df[(df["scenario"] == scenario) & (df["malicious"] == False)]["total_time"].values
-        lat_m = df[(df["scenario"] == scenario) & (df["malicious"] ==  True)]["total_time"].values
+    def __tag_scenario(self, scenario, threshold):
+        lat_n = self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] == False)]["total_time"].values
+        lat_m = self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] ==  True)]["total_time"].values
         anomalies = (lat_m - lat_n) / lat_n > threshold
-        return (scenario, anomalies)
+        return anomalies
 
     def tag(self, threshold, export=False):
         print("Computing tags...")
-        anomalies = Parallel(n_jobs=-1)(delayed(Tag.__tag_scenario)(self.df, scenario, threshold) for scenario in tqdm(self.scenarios))
+        anomalies = Parallel(n_jobs=-1, require="sharedmem")(delayed(self.__tag_scenario)(scenario, threshold) for scenario in tqdm(self.scenarios))
 
         print("Tagging dataset...")
-        for anomaly in tqdm(anomalies):
-            self.df.loc[self.df[(self.df["scenario"] == anomaly[0]) & (self.df["malicious"] == True)].index, "anomaly"] = anomaly[1]
+        for index, anomaly in enumerate(tqdm(anomalies)):
+            self.df.loc[self.df[(self.df["scenario"] == index) & (self.df["malicious"] == True)].index, "anomaly"] = anomaly
 
         anomaly_cnt = self.df["anomaly"].sum()
         print("Dataset has {} anomal{}".format(anomaly_cnt, 'y' if anomaly_cnt == 1 else 'ies'))
