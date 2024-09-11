@@ -11,10 +11,15 @@ class Preprocess:
             self.df   = read_csv(dataset)
             spinner.ok()
 
-    def preprocess(self, threshold, rate):
+    def preprocess(self, threshold, rate, notrain):
         anomalies = self.__tag(threshold)
-        train, test, real_rate = self.__split(rate, anomalies)
-        train, test = self.__clean(train, test)
+        if notrain:
+            test = self.__clean_test(self.df)
+            real_rate = 1.0
+        else:
+            train, test, real_rate = self.__split(rate, anomalies)
+            train = self.__clean_train(train)
+            test  = self.__clean_test(test)
 
         print("\n", end="")
         with yaspin(text="Exporting datasets...") as spinner:
@@ -24,8 +29,9 @@ class Preprocess:
             if len(tokens) > 1:
                 path   = "/".join(tokens[0:-1])
             full_name = "{}/{}_t{}_r{}".format(path, name, int(threshold*100), int(real_rate*100))
-            train.to_csv("{}_train.csv".format(full_name), index=False)
             test .to_csv("{}_test.csv" .format(full_name), index=False)
+            if not notrain:
+                train.to_csv("{}_train.csv".format(full_name), index=False)
             spinner.ok()
         
         print("Datasets exported to {}_{{train,test}}.csv".format(full_name))
@@ -36,14 +42,14 @@ class Preprocess:
         anomalies = Parallel(n_jobs=-1, require="sharedmem")(delayed(self.__tag_scenario)(scenario, threshold) for scenario in tqdm(scenarios))
 
         print("Tagging dataset...")
-        for scenario, anomaly in enumerate(tqdm(anomalies)):
-            self.df.loc[self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] == True)].index, "anomaly"] = anomaly
+        for anomaly in tqdm(anomalies):
+            self.df.loc[self.df[(self.df["scenario"] == anomaly[0]) & (self.df["malicious"] == True)].index, "anomaly"] = anomaly[1]
 
-        anom_scenarios = [sum(i) for i in anomalies]
+        self.df.loc[self.df[self.df["malicious"] == False].index, "anomaly"] = False
+
+        anom_scenarios = [sum(i[1]) for i in anomalies]
         anomaly_cnt = sum(anom_scenarios)
         print("Dataset has {} anomal{}".format(anomaly_cnt, 'y' if anomaly_cnt == 1 else 'ies'))
-
-        self.df.to_csv("mpeg_2048_debug.csv", index=False)
 
         return anom_scenarios
 
@@ -77,14 +83,21 @@ class Preprocess:
 
         return train, test, real_rate
 
-    def __clean(self, train, test):
+    def __clean_train(self, train):
         print("\n", end="")
-        with yaspin(text="Cleaning datasets...") as spinner:
+        with yaspin(text="Cleaning train dataset...") as spinner:
             train = train[["rel_timestamp", "prod", "cons", "hops", "size", "total_time"]]
             train.loc[:, "prod"] = Categorical(train["prod"])
             train.loc[:, "cons"] = Categorical(train["cons"])
             train = get_dummies(train, columns=["prod", "cons"])
 
+            spinner.ok()
+
+        return train
+    
+    def __clean_test(self, test):
+        print("\n", end="")
+        with yaspin(text="Cleaning test dataset...") as spinner:
             test = test[["rel_timestamp", "prod", "cons", "hops", "size", "total_time", "anomaly"]]
             test.loc[:, "prod"] = Categorical(test["prod"])
             test.loc[:, "cons"] = Categorical(test["cons"])
@@ -92,11 +105,11 @@ class Preprocess:
 
             spinner.ok()
 
-        return train, test
+        return test
 
     def __tag_scenario(self, scenario, threshold):
         lat_n = self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] == False)]["total_time"].values
         lat_m = self.df[(self.df["scenario"] == scenario) & (self.df["malicious"] ==  True)]["total_time"].values
         anomalies = (lat_m - lat_n) / lat_n > threshold
-        return anomalies
+        return (scenario, anomalies)
     
