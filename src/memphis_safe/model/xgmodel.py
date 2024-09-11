@@ -5,15 +5,17 @@ from xgboost import XGBRegressor
 from sklearn.model_selection import cross_val_score
 
 class XGModel:
-    def __init__(self, name):
+    def __init__(self, name, estimators, depth):
         with yaspin(text="Loading train dataset...") as spinner:
             self.name = name
+            self.estimators = estimators
+            self.depth = depth
             self.X    = read_csv(name)
             spinner.ok()
 
-        self.model = XGBRegressor(objective="reg:squarederror")
+        self.model = XGBRegressor(objective="reg:squarederror", n_estimators=estimators, max_depth=depth)
 
-    def train(self, cv_k, export=False):
+    def train(self, cv_k):
         print("\n", end="")
         with yaspin(text="Training model...") as spinner:
             self.y    = self.X[["total_time"]]
@@ -37,7 +39,7 @@ class XGModel:
             path   = "."
             if len(tokens) > 1:
                 path   = "/".join(tokens[0:-1])
-            full_name = "{}/{}".format(path, name)
+            full_name = "{}/{}_e{}_d{}".format(path, name, self.estimators, self.depth)
             self.model.save_model("{}_model.json".format(full_name))
             spinner.ok()
 
