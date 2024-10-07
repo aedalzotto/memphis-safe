@@ -1,7 +1,7 @@
 from xgboost import XGBRegressor
 from pandas import read_csv, DataFrame, concat
 from yaspin import yaspin
-from sklearn.metrics import recall_score, precision_score, f1_score
+from sklearn.metrics import recall_score, precision_score, f1_score, confusion_matrix
 
 class Safe:
     def __init__(self, model, test):
@@ -29,9 +29,11 @@ class Safe:
             y_pred["anomaly_pred"] = abs(y_pred["time_pred"] - self.y["total_time"]) / self.y["total_time"] > threshold
             spinner.ok()
 
-        print("\nTest recall:    {}".format(   recall_score(self.y["anomaly"], y_pred["anomaly_pred"])))
+        print("\nTest recall:    {}".format(   recall_score(self.y["anomaly"], y_pred["anomaly_pred"], zero_division=1.0)))
         print(  "Test precision: {}".format(precision_score(self.y["anomaly"], y_pred["anomaly_pred"])))
         print(  "Test F1:        {}".format(       f1_score(self.y["anomaly"], y_pred["anomaly_pred"])))
+
+        print(confusion_matrix(self.y["anomaly"], y_pred["anomaly_pred"]))
 
         with yaspin(text="Exporting report...") as spinner:
             test_path = "_".join(self.test_name.split(".")[-2].split("_")[:-1])
