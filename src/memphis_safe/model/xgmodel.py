@@ -14,7 +14,7 @@ class XGModel:
             self.X    = read_csv(name)
             spinner.ok()
 
-        self.model = XGBRegressor(objective="reg:squarederror", n_estimators=estimators, max_depth=depth)
+        self.model = XGBRegressor(objective="reg:squarederror", base_score=50, n_estimators=estimators, max_depth=depth)
 
     def train(self, cv_k):
         print("\n", end="")
