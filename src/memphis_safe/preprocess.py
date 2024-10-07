@@ -11,8 +11,12 @@ class Preprocess:
             self.df   = read_csv(dataset)
             spinner.ok()
 
-    def preprocess(self, threshold, rate, notrain):
-        anomalies = self.__tag(threshold)
+    def preprocess(self, threshold, rate, notrain, notag):
+        if notag:
+            self.df["anomaly"] = False
+        else:
+            anomalies = self.__tag(threshold)
+
         if notrain:
             test = self.__clean_test(self.df)
             real_rate = 1.0
