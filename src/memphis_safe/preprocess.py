@@ -21,7 +21,7 @@ class Preprocess:
             test = self.__clean_test(self.df)
             real_rate = 1.0
         else:
-            train, test, real_rate, test_idx = self.__split(rate, anomalies)
+            train, test, real_rate = self.__split(rate, anomalies)
             train = self.__clean_train(train)
             test  = self.__clean_test(test)
 
@@ -36,8 +36,6 @@ class Preprocess:
             test.to_csv("{}_test.csv" .format(full_name), index=False)
             if not notrain:
                 train.to_csv("{}_train.csv".format(full_name), index=False)
-            with open("{}_test_scenarios.csv".format(full_name), "w") as f:
-                [f.write("{},".format(s)) for s in test_idx]
             spinner.ok()
         
         print("Datasets exported to {}_{{train,test}}.csv".format(full_name))
@@ -87,7 +85,7 @@ class Preprocess:
         print("Scenario distribution:")
         print(test[(test["scenario"] == test_idx[0])]["anomaly"].value_counts())
 
-        return train, test, real_rate, test_idx
+        return train, test, real_rate
 
     def __clean_train(self, train):
         print("\n", end="")
@@ -104,7 +102,7 @@ class Preprocess:
     def __clean_test(self, test):
         print("\n", end="")
         with yaspin(text="Cleaning test dataset...") as spinner:
-            test = test[["rel_timestamp", "prod", "cons", "hops", "size", "total_time", "anomaly"]]
+            test = test[["scenario", "rel_timestamp", "prod", "cons", "hops", "size", "total_time", "anomaly"]]
             test.loc[:, "prod"] = Categorical(test["prod"])
             test.loc[:, "cons"] = Categorical(test["cons"])
             test = get_dummies(test, columns=["prod", "cons"])

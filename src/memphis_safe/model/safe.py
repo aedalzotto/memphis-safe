@@ -15,6 +15,7 @@ class Safe:
         print("\n", end="")
         with yaspin(text="Loading test dataset...") as spinner:
             self.X = read_csv(test)
+            self.X.drop("scenario", axis=1, inplace=True)
             spinner.ok()
     
     def test(self, threshold):
