@@ -21,7 +21,7 @@ class Preprocess:
             test = self.__clean_test(self.df)
             real_rate = 1.0
         else:
-            train, test, real_rate = self.__split(rate, anomalies)
+            train, test, real_rate, test_idx = self.__split(rate, anomalies)
             train = self.__clean_train(train)
             test  = self.__clean_test(test)
 
@@ -33,9 +33,11 @@ class Preprocess:
             if len(tokens) > 1:
                 path   = "/".join(tokens[0:-1])
             full_name = "{}/{}_t{}_r{}".format(path, name, int(threshold*100), int(real_rate*100))
-            test .to_csv("{}_test.csv" .format(full_name), index=False)
+            test.to_csv("{}_test.csv" .format(full_name), index=False)
             if not notrain:
                 train.to_csv("{}_train.csv".format(full_name), index=False)
+            with open("{}_test_scenarios.csv".format(full_name), "w") as f:
+                [f.write("{},".format(s)) for s in test_idx]
             spinner.ok()
         
         print("Datasets exported to {}_{{train,test}}.csv".format(full_name))
@@ -85,7 +87,7 @@ class Preprocess:
         print("Scenario distribution:")
         print(test[(test["scenario"] == test_idx[0])]["anomaly"].value_counts())
 
-        return train, test, real_rate
+        return train, test, real_rate, test_idx
 
     def __clean_train(self, train):
         print("\n", end="")
