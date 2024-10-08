@@ -11,19 +11,20 @@ class Preprocess:
             self.df   = read_csv(dataset)
             spinner.ok()
 
-    def preprocess(self, threshold, rate, notrain, notag):
+    def preprocess(self, threshold, rate, notrain, notag, nodummies=False):
         if notag:
             self.df["anomaly"] = False
         else:
             anomalies = self.__tag(threshold)
 
         if notrain:
-            test = self.__clean_test(self.df)
-            real_rate = 1.0
+            test = self.df[self.df["malicious"] == True]
+            test = self.__clean_test(test, nodummies)
+            real_rate = 0.0
         else:
             train, test, real_rate = self.__split(rate, anomalies)
-            train = self.__clean_train(train)
-            test  = self.__clean_test(test)
+            train = self.__clean_train(train, nodummies)
+            test  = self.__clean_test(test, nodummies)
 
         print("\n", end="")
         with yaspin(text="Exporting datasets...") as spinner:
@@ -87,25 +88,27 @@ class Preprocess:
 
         return train, test, real_rate
 
-    def __clean_train(self, train):
+    def __clean_train(self, train, nodummies=False):
         print("\n", end="")
         with yaspin(text="Cleaning train dataset...") as spinner:
             train = train[["rel_timestamp", "prod", "cons", "hops", "size", "total_time"]]
-            train.loc[:, "prod"] = Categorical(train["prod"])
-            train.loc[:, "cons"] = Categorical(train["cons"])
-            train = get_dummies(train, columns=["prod", "cons"])
+            if not nodummies:
+                train.loc[:, "prod"] = Categorical(train["prod"])
+                train.loc[:, "cons"] = Categorical(train["cons"])
+                train = get_dummies(train, columns=["prod", "cons"])
 
             spinner.ok()
 
         return train
     
-    def __clean_test(self, test):
+    def __clean_test(self, test, nodummies=False):
         print("\n", end="")
         with yaspin(text="Cleaning test dataset...") as spinner:
             test = test[["scenario", "rel_timestamp", "prod", "cons", "hops", "size", "total_time", "anomaly"]]
-            test.loc[:, "prod"] = Categorical(test["prod"])
-            test.loc[:, "cons"] = Categorical(test["cons"])
-            test = get_dummies(test, columns=["prod", "cons"])
+            if not nodummies:
+                test.loc[:, "prod"] = Categorical(test["prod"])
+                test.loc[:, "cons"] = Categorical(test["cons"])
+                test = get_dummies(test, columns=["prod", "cons"])
 
             spinner.ok()
 

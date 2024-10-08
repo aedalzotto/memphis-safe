@@ -2,10 +2,21 @@ from argparse import ArgumentParser
 from .model.xgmodel import XGModel
 from .model.safe import Safe
 from .preprocess import Preprocess
+from .metrics import Metrics
+from .eval import Eval
 
 def memphis_safe():
     parser = ArgumentParser(description="Memphis Security Anomaly Forecasting Engine")
     subparsers = parser.add_subparsers(dest="option")
+
+    metrics_parser = subparsers.add_parser("rtd-metrics", help="Show real-time detection metrics")
+    metrics_parser.add_argument("LATENCY", help="Latency dataset to process")
+    metrics_parser.add_argument("INFERENCE", help="Inference dataset to process")
+    metrics_parser.add_argument("DETECTION", help="Detection dataset to process")
+
+    metrics_parser = subparsers.add_parser("rtd-eval", help="Show real-time detection predictive performance")
+    metrics_parser.add_argument("TEST", help="Test dataset with correct tags")
+    metrics_parser.add_argument("RTD", help="RTD dataset with extracted tags")
 
     preprocess_parser = subparsers.add_parser("preprocess", help="Preprocess dataset")
     preprocess_parser.add_argument("DATASET", help="Dataset to preprocess")
@@ -13,6 +24,7 @@ def memphis_safe():
     preprocess_parser.add_argument("-r", "--rate",       help="Train/test split rate",                      default=0.75, type=float)
     preprocess_parser.add_argument("-s", "--skip-train", help="Skip training dataset", action="store_true", default=False           )
     preprocess_parser.add_argument("-n", "--no-tag",     help="Skip tagging dataset",  action="store_true", default=False           )
+    preprocess_parser.add_argument("-d", "--no-dummies", help="Skip converting data to categorical",  action="store_true", default=False           )
 
     train_parser = subparsers.add_parser("train",   help="Train model")
     train_parser.add_argument("TRAIN",              help="Train dataset to train model"                     )
@@ -26,9 +38,15 @@ def memphis_safe():
     test_parser.add_argument("-t", "--threshold", help="Latency threshold to consider an anomaly", default=0.05, type=float)
 
     args = parser.parse_args()
-    if args.option == "preprocess":
+    if args.option == "rtd-metrics":
+        rtd = Metrics(args.LATENCY, args.INFERENCE, args.DETECTION)
+        rtd.metrics()
+    elif args.option == "rtd-eval":
+        rtd = Eval(args.TEST, args.RTD)
+        rtd.eval()
+    elif args.option == "preprocess":
         data = Preprocess(args.DATASET)
-        data.preprocess(args.threshold, args.rate, args.skip_train, args.no_tag)
+        data.preprocess(args.threshold, args.rate, args.skip_train, args.no_tag, args.no_dummies)
     elif args.option == "train":
         model = XGModel(args.TRAIN, args.estimators, args.depth)
         model.train(args.cross_val)
