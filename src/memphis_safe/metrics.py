@@ -16,9 +16,9 @@ class Metrics:
         self.det["duration"] = self.det["end"] - self.det["beggining"]
         
         for scenario in self.det["scenario"]:
-            base  = self.det.loc[self.det[(self.det["scenario"] == scenario) & (self.det["malicious"] == False)].index, "duration"].item()
-            worst = self.det.loc[self.det[(self.det["scenario"] == scenario) & (self.det["malicious"] == True )].index, "duration"].item()
+            base  = self.det.loc[self.det[(self.det["scenario"] == scenario) & (self.det["rtd"] == False)].index, "duration"].item()
+            worst = self.det.loc[self.det[(self.det["scenario"] == scenario) & (self.det["rtd"] == True )].index, "duration"].item()
             rate = (worst - base) / base
-            self.det.loc[self.det[(self.det["scenario"] == scenario) & (self.det["malicious"] == True)].index, "rate"] = rate
+            self.det.loc[self.det[(self.det["scenario"] == scenario) & (self.det["rtd"] == True)].index, "rate"] = rate
 
         print("Average exec. time increase = {}%".format(round(self.det["rate"].mean()*100, 2)))
