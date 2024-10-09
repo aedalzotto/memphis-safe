@@ -17,8 +17,15 @@ class Eval:
             for rowidx, row in sc_rtd.iterrows():
                 if sc_test.iloc[row["index"]]["prod"] == row["prod"] and sc_test.iloc[row["index"]]["cons"] == row["cons"]:
                     sc_test.iloc[row["index"], sc_test.columns.get_loc('anomaly_pred')] = True
+                elif sc_test.iloc[row["index"]+1]["prod"] == row["prod"] and sc_test.iloc[row["index"]+1]["cons"] == row["cons"]:
+                    sc_test.iloc[row["index"]+1, sc_test.columns.get_loc('anomaly_pred')] = True
+                    print("WARN: row mismatch... matched next")
+                elif sc_test.iloc[row["index"]-1]["prod"] == row["prod"] and sc_test.iloc[row["index"]-1]["cons"] == row["cons"]:
+                    sc_test.iloc[row["index"], sc_test.columns.get_loc('anomaly_pred')] = True
+                    print("WARN: row mismatch... matched previous")
                 else:
-                    raise ValueError("Detected index does not match")
+                    raise ValueError("ERROR: Detected index does not match")
+                    
 
             final = concat([sc_test, final], ignore_index=True)
 
