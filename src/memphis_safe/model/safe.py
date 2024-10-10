@@ -26,8 +26,7 @@ class Safe:
             self.X.drop(columns=["total_time", "anomaly"], inplace=True)
 
             y_pred["time_pred"] = self.model.predict(self.X)
-            tag = self.y["anomaly"].astype('bool')
-            y_pred["anomaly_pred"] = abs(y_pred["time_pred"] - self.y["total_time"]) / self.y["total_time"] > threshold
+            y_pred["anomaly_pred"] = (self.y["total_time"] - y_pred["time_pred"]) / y_pred["time_pred"] > threshold
             spinner.ok()
 
         print("\nTest recall:    {}".format(   recall_score(self.y["anomaly"], y_pred["anomaly_pred"], zero_division=1.0)))
