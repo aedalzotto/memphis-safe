@@ -3,7 +3,6 @@ from pandas import read_csv
 from yaspin import yaspin
 from xgboost import XGBRegressor
 from sklearn.model_selection import cross_val_score
-from pickle import dump
 
 class XGModel:
     def __init__(self, name, estimators, depth):
@@ -42,7 +41,6 @@ class XGModel:
                 path   = "/".join(tokens[0:-1])
             full_name = "{}/{}_e{}_d{}".format(path, name, self.estimators, self.depth)
             self.model.save_model("{}_model.json".format(full_name))
-            dump(self.model, open("{}_model.pkl".format(full_name), "wb"))
             spinner.ok()
 
-        print("Model exported to {}_model.{{json,pkl}}".format(full_name))
+        print("Model exported to {}_model.json".format(full_name))
