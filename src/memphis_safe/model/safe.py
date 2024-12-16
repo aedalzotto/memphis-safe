@@ -1,5 +1,5 @@
 from xgboost import XGBRegressor
-from pandas import read_csv, DataFrame, concat
+from pandas import read_csv, DataFrame, concat, get_dummies
 from yaspin import yaspin
 from sklearn.metrics import recall_score, precision_score, f1_score, confusion_matrix
 
@@ -15,6 +15,9 @@ class Safe:
         print("\n", end="")
         with yaspin(text="Loading test dataset...") as spinner:
             self.X = read_csv(test)
+            self.X["prod"] = self.X["prod"].astype("category")
+            self.X["cons"] = self.X["cons"].astype("category")
+            self.X = get_dummies(self.X, columns=["prod", "cons"])
             self.X.drop("scenario", axis=1, inplace=True)
             spinner.ok()
     

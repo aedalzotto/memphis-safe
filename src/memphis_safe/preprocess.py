@@ -1,5 +1,5 @@
 from yaspin import yaspin
-from pandas import read_csv, Categorical, get_dummies
+from pandas import read_csv
 from joblib import Parallel, delayed
 from tqdm import tqdm
 from random import sample
@@ -11,7 +11,7 @@ class Preprocess:
             self.df   = read_csv(dataset)
             spinner.ok()
 
-    def preprocess(self, threshold, rate, notrain, notag, nodummies=False):
+    def preprocess(self, threshold, rate, notrain, notag):
         if notag:
             self.df["anomaly"] = False
         else:
@@ -19,12 +19,12 @@ class Preprocess:
 
         if notrain:
             test = self.df[self.df["malicious"] == True]
-            test = self.__clean_test(test, nodummies)
+            test = self.__clean_test(test)
             real_rate = 0.0
         else:
             train, test, real_rate = self.__split(rate, anomalies)
-            train = self.__clean_train(train, nodummies)
-            test  = self.__clean_test(test, nodummies)
+            train = self.__clean_train(train)
+            test  = self.__clean_test(test)
 
         print("\n", end="")
         with yaspin(text="Exporting datasets...") as spinner:
@@ -88,27 +88,19 @@ class Preprocess:
 
         return train, test, real_rate
 
-    def __clean_train(self, train, nodummies=False):
+    def __clean_train(self, train):
         print("\n", end="")
         with yaspin(text="Cleaning train dataset...") as spinner:
             train = train[["rel_timestamp", "prod", "cons", "hops", "size", "total_time"]]
-            if not nodummies:
-                train.loc[:, "prod"] = Categorical(train["prod"])
-                train.loc[:, "cons"] = Categorical(train["cons"])
-                train = get_dummies(train, columns=["prod", "cons"])
 
             spinner.ok()
 
         return train
     
-    def __clean_test(self, test, nodummies=False):
+    def __clean_test(self, test):
         print("\n", end="")
         with yaspin(text="Cleaning test dataset...") as spinner:
             test = test[["scenario", "rel_timestamp", "prod", "cons", "hops", "size", "total_time", "anomaly"]]
-            if not nodummies:
-                test.loc[:, "prod"] = Categorical(test["prod"])
-                test.loc[:, "cons"] = Categorical(test["cons"])
-                test = get_dummies(test, columns=["prod", "cons"])
 
             spinner.ok()
 

@@ -1,7 +1,7 @@
 from numpy import sqrt
-from pandas import read_csv
+from pandas import read_csv, get_dummies
 from yaspin import yaspin
-from xgboost import XGBRegressor
+from xgboost import XGBRegressor, to_graphviz,plot_tree
 from sklearn.model_selection import cross_val_score
 
 class XGModel:
@@ -11,6 +11,9 @@ class XGModel:
             self.estimators = estimators
             self.depth = depth
             self.X    = read_csv(name)
+            self.X["prod"] = self.X["prod"].astype("category")
+            self.X["cons"] = self.X["cons"].astype("category")
+            self.X = get_dummies(self.X, columns=["prod", "cons"])
             spinner.ok()
 
         self.model = XGBRegressor(objective="reg:squarederror", base_score=50, n_estimators=estimators, max_depth=depth)
