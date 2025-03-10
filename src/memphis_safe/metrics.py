@@ -10,7 +10,7 @@ class Metrics:
         avg_lat = (self.lat["avg_latency"] * self.lat["n_inf"]).sum() / self.lat["n_inf"].sum() / 100.0
         print("Average inference latency = {} us".format(round(avg_lat, 1)))
 
-        avg_det = self.inf["det_latency"].mean() / 100.0
+        avg_det = self.inf.loc[self.inf[self.inf["anomaly"] == 1].index, "det_latency"].mean() / 100.0
         print("Average detection latency = {} us".format(round(avg_det, 1)))
 
         self.det["duration"] = self.det["end"] - self.det["beggining"]
