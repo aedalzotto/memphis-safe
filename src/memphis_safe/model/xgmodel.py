@@ -3,6 +3,7 @@ from pandas import read_csv, get_dummies
 from yaspin import yaspin
 from xgboost import XGBRegressor, to_graphviz,plot_tree
 from sklearn.model_selection import cross_val_score
+from .neg_mape import neg_mean_percentage_error
 
 class XGModel:
     def __init__(self, name, estimators, depth):
@@ -23,7 +24,7 @@ class XGModel:
         with yaspin(text="Training model...") as spinner:
             self.y    = self.X[["total_time"]]
             self.X.drop(columns=["total_time"], inplace=True)
-            scores = cross_val_score(self.model, self.X, self.y, scoring='neg_mean_squared_error', cv=cv_k)
+            scores = cross_val_score(self.model, self.X, self.y, scoring=neg_mean_percentage_error, cv=cv_k)
             rmse = sqrt(-scores)
             self.model.fit(self.X, self.y)
             spinner.ok()
