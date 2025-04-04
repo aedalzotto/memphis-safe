@@ -1,68 +1,71 @@
 from pandas import read_csv, DataFrame, concat
+from yaspin import yaspin
 from sklearn.metrics import recall_score, precision_score, f1_score, confusion_matrix
+from os import listdir
+from joblib import Parallel, delayed
+from tqdm import tqdm
+from yaml import safe_load
 
 class Eval:
-    def __init__(self, test, rtd):
-        test_df = read_csv(test)
-        rtd_df  = read_csv(rtd)
+    def __init__(self, testcase, dataset):
+        with yaspin(text="Loading RTD dataset...") as spinner:
+            self.df = read_csv(dataset)
+            spinner.ok()
 
-        self.scenarios = sorted(rtd_df["scenario"].unique())
-        
-        self.test = {}
-        self.rtd  = {}
-        for scenario in self.scenarios:
-            sc_test = test_df[test_df["scenario"] == scenario].sort_values(by='rel_timestamp')
-            sc_rtd  = rtd_df [rtd_df ["scenario"] == scenario].sort_values(by='rel_timestamp')
+        self.apps = None
+        self.base_scenario = ["{}/{}".format(testcase, scenario) for scenario in listdir(testcase) if scenario.startswith("sc_") and scenario.endswith("_m")]
+        self.rtd_scenario  = ["{}/{}".format(testcase, scenario) for scenario in listdir(testcase) if scenario.startswith("sc_") and scenario.endswith("_rtd")]
 
-            edge_test = {}
-            edge_rtd  = {}
-            for prod in sc_rtd["prod"].unique():
-                prod_test = sc_test[sc_test["prod"] == prod]
-                prod_rtd  = sc_rtd [sc_rtd ["prod"] == prod]
-                for cons in prod_rtd["cons"].unique():
-                    edge_test[(prod,cons)] = prod_test[prod_test["cons"] == cons].reset_index()
-                    edge_rtd [(prod,cons)] = prod_rtd [prod_rtd ["cons"] == cons].reset_index()
+    def __get_duration(scenario, apps):
+            scen_name = scenario.split("/")[-1]
+            scen_file = "{}/{}.yaml".format(scenario, scen_name)    
+            with open(scen_file, "r") as f:
+                yaml = safe_load(f)
+                for task in yaml["management"]:
+                    if task["task"] == "mapper_task":
+                        mapper = task["static_mapping"]
+                        break            
 
-            self.test[scenario] = edge_test
-            self.rtd [scenario] = edge_rtd
+            with open("{}/log/log{}x{}.txt".format(scenario, mapper[0], mapper[1]), "r") as f:
+                beggining = {}
+                end = {}
+                for line in f:
+                    if line[0] == "$":
+                        line = line.split("_")[-1]
+                        tokens = line.split(" ")
+                        if tokens[0] == "RELEASE" and int(tokens[6]) == 1:
+                            beggining[int(tokens[6])] = int(tokens[3])
+                        elif tokens[0] == "App" and int(tokens[1]) == 1:
+                            end[int(tokens[1])] = int(tokens[5])
+
+            lines = []
+            for app in apps:
+                line = {}
+                line["scenario"] = scen_name.split("_")[1]
+                line["app"] = app
+                line["duration"] = int(end[app] - beggining[app])
+                lines.append(line)
+
+            return DataFrame(lines)
+
 
     def eval(self):
-        final = DataFrame(columns=['scenario', 'hops', 'size', 'prod', 'cons', 'total_time', 'anomaly', 'anomaly_pred'])
-        for scenario in self.rtd:
-            sc_rtd  = self.rtd [scenario]
-            sc_test = self.test[scenario]
+        apps = self.df["app"].unique()
+        print("Extracting mapper logs from baseline scenario...")
+        base_duration = Parallel(n_jobs=-1)(delayed(Eval.__get_duration)(scenario, apps) for scenario in tqdm(self.base_scenario))
+        base_df = concat(base_duration, ignore_index=True)
 
-            for edge in sc_rtd:
-                edge_rtd  = sc_rtd [edge]
-                edge_test = sc_test[edge]
-                for rowidx, row_rtd, in edge_rtd.iterrows():
-                    final = concat(
-                        [
-                            DataFrame(
-                                [
-                                    [
-                                        scenario,
-                                        edge_test.iloc[rowidx]["hops"],
-                                        edge_test.iloc[rowidx]["size"],
-                                        edge[0], 
-                                        edge[1],
-                                        edge_test.iloc[rowidx]["total_time"],
-                                        edge_test.iloc[rowidx]["anomaly"],
-                                        edge_rtd.iloc [rowidx]["anomaly"],
-                                    ]
-                                ], 
-                                columns=final.columns
-                            ), 
-                            final
-                        ], 
-                        ignore_index=True
-                    )
+        print("Extracting mapper logs from RTD scenario...")
+        rtd_duration  = Parallel(n_jobs=-1)(delayed(Eval.__get_duration)(scenario, apps) for scenario in tqdm(self.rtd_scenario))
+        rtd_df = concat(rtd_duration, ignore_index=True)
 
-        y      = final["anomaly"].astype('bool')
-        y_pred = final["anomaly_pred"].astype('bool')
+        true_pos = self.df[(self.df["malicious"] == True) & (self.df["mal_pred"] == True)]
 
-        print("\nTest recall:    {}".format(   recall_score(y, y_pred, zero_division=1.0)))
-        print(  "Test precision: {}".format(precision_score(y, y_pred)))
-        print(  "Test F1:        {}".format(       f1_score(y, y_pred)))
+        print("\nTest recall:    {}"  .format(round(   recall_score(self.df["malicious"], self.df["mal_pred"]),           3)))
+        print(  "Test precision: {}"  .format(round(precision_score(self.df["malicious"], self.df["mal_pred"]),           3)))
+        print(  "Test F1:        {}"  .format(round(       f1_score(self.df["malicious"], self.df["mal_pred"]),           3)))
+        print(  "Avg. inf. lat.: {}"  .format(round(true_pos["inf_lat"].mean()/100.0,                                     3)))
+        print(  "Avg. det. lat.: {}"  .format(round(true_pos["det_lat"].mean()/100.0,                                     3)))
+        print(  "App time inc.:  {} %".format(round(((rtd_df["duration"].mean() / base_df["duration"].mean())-1.0)*100.0, 2)))
 
-        print(confusion_matrix(y, y_pred))
+        print(confusion_matrix(self.df["malicious"], self.df["mal_pred"]))

@@ -14,29 +14,27 @@ class Safe:
 
         print("\n", end="")
         with yaspin(text="Loading test dataset...") as spinner:
-            self.X = read_csv(test)
+            self.X         = read_csv(test)
+            self.y         = self.X[["latency", "malicious"]]
+            self.X         = self.X[["rel_time", "prod", "cons", "hops", "size"]]
             self.X["prod"] = self.X["prod"].astype("category")
             self.X["cons"] = self.X["cons"].astype("category")
-            self.X = get_dummies(self.X, columns=["prod", "cons"])
-            self.X.drop("scenario", axis=1, inplace=True)
+            self.X         = get_dummies(self.X, columns=["prod", "cons"])
             spinner.ok()
     
     def test(self, threshold):
         print("\n", end="")
         y_pred = DataFrame()
         with yaspin(text="Testing model...") as spinner:
-            self.y = self.X[["total_time", "anomaly"]]
-            self.X.drop(columns=["total_time", "anomaly"], inplace=True)
-
-            y_pred["time_pred"] = self.model.predict(self.X)
-            y_pred["anomaly_pred"] = (self.y["total_time"] - y_pred["time_pred"]) / y_pred["time_pred"] > threshold
+            y_pred["lat_pred"] = self.model.predict(self.X)
+            y_pred["mal_pred"] = (self.y["latency"] - y_pred["lat_pred"]) / y_pred["lat_pred"] > threshold
             spinner.ok()
 
-        print("\nTest recall:    {}".format(   recall_score(self.y["anomaly"], y_pred["anomaly_pred"], zero_division=1.0)))
-        print(  "Test precision: {}".format(precision_score(self.y["anomaly"], y_pred["anomaly_pred"])))
-        print(  "Test F1:        {}".format(       f1_score(self.y["anomaly"], y_pred["anomaly_pred"])))
+        print("\nTest recall:    {}".format(   recall_score(self.y["malicious"], y_pred["mal_pred"], zero_division=1.0)))
+        print(  "Test precision: {}".format(precision_score(self.y["malicious"], y_pred["mal_pred"])))
+        print(  "Test F1:        {}".format(       f1_score(self.y["malicious"], y_pred["mal_pred"])))
 
-        print(confusion_matrix(self.y["anomaly"], y_pred["anomaly_pred"]))
+        print(confusion_matrix(self.y["malicious"], y_pred["mal_pred"]))
 
         with yaspin(text="Exporting report...") as spinner:
             test_path = "_".join(self.test_name.split(".")[-2].split("_")[:-1])
