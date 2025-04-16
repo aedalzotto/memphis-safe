@@ -24,7 +24,7 @@ class Eval:
                 for task in yaml["management"]:
                     if task["task"] == "mapper_task":
                         mapper = task["static_mapping"]
-                        break            
+                        break
 
             with open("{}/log/log{}x{}.txt".format(scenario, mapper[0], mapper[1]), "r") as f:
                 beggining = {}

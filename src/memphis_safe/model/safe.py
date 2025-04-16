@@ -14,11 +14,12 @@ class Safe:
 
         print("\n", end="")
         with yaspin(text="Loading test dataset...") as spinner:
-            self.df         = read_csv(test)
-            self.X         = self.df[["rel_time", "prod", "cons", "hops", "size"]]
+            self.df              = read_csv(test)
+            self.X               = self.df[["rel_time", "prod", "cons", "hops", "size"]]
             self.X.loc[:,"prod"] = self.X["prod"].astype("category")
             self.X.loc[:,"cons"] = self.X["cons"].astype("category")
-            self.X         = get_dummies(self.X, columns=["prod", "cons"])
+            self.X               = get_dummies(self.X, columns=["prod", "cons"])
+            self.X               = self.X[self.model.feature_names_in_]
             spinner.ok()
 
         print("\nFeature importances:")
