@@ -14,13 +14,19 @@ class XGModel:
         with yaspin(text="Loading train dataset...") as spinner:
             self.X         = read_csv(name)
 
-            self.X.sort_values(by='rel_time', inplace = True)
+            # self.X.loc[self.X[self.X["latency"] < 100].index, "latency"] = 140
+            # self.X.sort_values(by='rel_time', inplace = True)
+
             total = self.X.shape[0]
-            self.weights = ones(total)
-            n_warmup = self.X[self.X["rel_time"] < 1000].shape[0]
-            weight = int(total/n_warmup/2)
+            warmup = self.X[self.X["rel_time"] < 1000].index
+            # small = self.X[self.X["latency"] < 50].index
+            weight = int(total/len(warmup)/2)
             # weight = 1
-            self.weights[:n_warmup] = weight
+            self.X["weight"] = 1.0
+            self.X.loc[warmup, "weight"] = weight
+            # self.X.loc[small, "weight"] = 0.01
+            self.weights = self.X["weight"].values
+            
             self.y         = self.X[["latency"]]
             self.X         = self.X[["rel_time", "prod", "cons", "hops", "size"]]
             self.X["prod"] = self.X["prod"].astype("category")
@@ -29,7 +35,7 @@ class XGModel:
             spinner.ok()
 
         print("\n{} total".format(total))
-        print("{} with more weight".format(n_warmup))
+        print("{} with more weight".format(len(warmup)))
         print("{} weight".format(weight))
 
     def __get_mape(self, cv_k, n_estimators, max_depth):
