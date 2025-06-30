@@ -29,6 +29,8 @@ class Safe:
         print("\n", end="")
         y_pred = DataFrame()
         with yaspin(text="Testing model...") as spinner:
+            # y_pred["latency"]  = self.df["latency"]
+            # y_pred["real_mal"] = self.df["malicious"]
             y_pred["lat_pred"] = self.model.predict(self.X)
             y_pred["lat_diff"] = (self.df["latency"] - y_pred["lat_pred"]) / y_pred["lat_pred"]
             y_pred["mal_pred"] = y_pred["lat_diff"] > threshold
@@ -39,6 +41,9 @@ class Safe:
         print(  "Test F1:        {}".format(       f1_score(self.df["malicious"], y_pred["mal_pred"])))
 
         print(confusion_matrix(self.df["malicious"], y_pred["mal_pred"], labels=[True, False]))
+        
+        # y_pred.sort_values(by='lat_diff', inplace = True)
+        # print(y_pred[y_pred["real_mal"] == True])
 
         self.df = concat([self.df, y_pred], axis=1)
         print("\nMin. diff TP:   {}".format(self.df[(self.df["mal_pred"] == True) & (self.df["malicious"] == True)]["lat_diff"].min()))

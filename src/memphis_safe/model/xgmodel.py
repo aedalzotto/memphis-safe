@@ -42,6 +42,7 @@ class XGModel:
         # model = XGBRegressor(base_score=50, n_estimators=n_estimators, max_depth=max_depth, min_child_weight=5, gamma=1, reg_lambda=1, subsample=0.8, colsample_bytree=0.8, eta=0.2)
         model = XGBRegressor(base_score=50, n_estimators=n_estimators, max_depth=max_depth)
         scores = cross_val_score(model, self.X, self.y, scoring=neg_mean_percentage_error, cv=cv_k, fit_params={'sample_weight': self.weights})
+        # scores = cross_val_score(model, self.X, self.y, scoring=neg_mean_percentage_error, cv=cv_k)
         mape = -scores
         return mape, model
 
@@ -92,6 +93,7 @@ class XGModel:
                     last_bad_max_depth = max_depth
                 
             last_good_model.fit(self.X, self.y, sample_weight=self.weights)
+            # last_good_model.fit(self.X, self.y)
             spinner.ok()
 
         print("n_estimators={}; max_depth={}".format(last_good_n_estimators, last_good_max_depth))
