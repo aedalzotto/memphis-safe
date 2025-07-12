@@ -14,7 +14,7 @@ class Safe:
 
         print("\n", end="")
         with yaspin(text="Loading test dataset...") as spinner:
-            self.df              = read_csv(test)
+            self.df              = read_csv(test)[["snd_time","noc_time","rcv_time","size","prod","cons","noc_lat","sys_lat","latency","app","scenario","rel_time","hops","ht_time","malicious","mal_cycles"]]
             self.X               = self.df[["rel_time", "prod", "cons", "hops", "size"]]
             self.X.loc[:,"prod"] = self.X["prod"].astype("category")
             self.X.loc[:,"cons"] = self.X["cons"].astype("category")
