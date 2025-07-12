@@ -41,14 +41,18 @@ class XGModel:
     def __get_mape(self, cv_k, n_estimators, max_depth):
         # model = XGBRegressor(base_score=50, n_estimators=n_estimators, max_depth=max_depth, min_child_weight=5, gamma=1, reg_lambda=1, subsample=0.8, colsample_bytree=0.8, eta=0.2)
         model = XGBRegressor(base_score=50, n_estimators=n_estimators, max_depth=max_depth)
-        scores = cross_val_score(model, self.X, self.y, scoring=neg_mean_percentage_error, cv=cv_k, fit_params={'sample_weight': self.weights})
+        scores = cross_val_score(model, self.X, self.y, scoring=neg_mean_percentage_error, cv=cv_k, params={'sample_weight': self.weights})
         # scores = cross_val_score(model, self.X, self.y, scoring=neg_mean_percentage_error, cv=cv_k)
         mape = -scores
         return mape, model
 
-    def train(self, cv_k):
+    def train(self, cv_k, n_estimators=None, max_depth=None):
         last_good_n_estimators = 100
         last_good_max_depth = 6
+        if n_estimators is not None:
+            last_good_n_estimators = n_estimators
+        if max_depth is not None:
+            last_good_max_depth = max_depth
         print("\n", end="")
         with yaspin(text="Training base model...") as spinner:
             last_good_score, last_good_model = self.__get_mape(cv_k, last_good_n_estimators, last_good_max_depth)

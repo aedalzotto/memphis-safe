@@ -7,9 +7,11 @@ def memphis_safe():
     parser = ArgumentParser(description="Memphis Security Anomaly Forecasting Engine")
     subparsers = parser.add_subparsers(dest="option")
 
-    train_parser = subparsers.add_parser("train",   help="Train model")
-    train_parser.add_argument("TRAIN",              help="Train dataset to train model"                     )
-    train_parser.add_argument("-k", "--cross-val",  help="Cross-validation subsets",     default=10,  type=int)
+    train_parser = subparsers.add_parser("train",     help="Train model")
+    train_parser.add_argument("TRAIN",                help="Train dataset to train model"                       )
+    train_parser.add_argument("-k", "--cross-val",    help="Cross-validation subsets",    default=10,   type=int)
+    train_parser.add_argument("-n", "--n-estimators", help="Number of estimators",        default=None, type=int)
+    train_parser.add_argument("-d", "--max-depth",    help="Max depth of the tree",       default=None, type=int)
 
     test_parser = subparsers.add_parser("test", help="Test model")
     test_parser.add_argument("MODEL",   help="Model to test")
@@ -23,7 +25,7 @@ def memphis_safe():
     args = parser.parse_args()
     if args.option == "train":
         model = XGModel(args.TRAIN)
-        model.train(args.cross_val)
+        model.train(args.cross_val, args.n_estimators, args.max_depth)
     elif args.option == "test":
         model = Safe(args.MODEL, args.DATASET)
         model.test(args.threshold)
