@@ -58,6 +58,9 @@ class Safe:
         print(  "Max. HT FN:     {}".format(self.df[(self.df["mal_pred"] == False) & (self.df["malicious"] == True)]["mal_cycles"].max()))
         print(  "Avg. HT FN:     {}".format(self.df[(self.df["mal_pred"] == False) & (self.df["malicious"] == True)]["mal_cycles"].mean()))
 
+        print("\nMax. latency    {}".format(self.df[(self.df["malicious"] == False)]["latency"].max()))
+        print(  "Min. latency    {}".format(self.df[(self.df["malicious"] == False)]["latency"].min()))
+        print(  "Avg. latency    {}".format(self.df[(self.df["malicious"] == False)]["latency"].mean()))
 
         with yaspin(text="Exporting report...") as spinner:
             test_path = "_".join(self.test_name.split(".")[-2].split("_")[:-1])
