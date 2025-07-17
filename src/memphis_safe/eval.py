@@ -60,9 +60,7 @@ class Eval:
         rtd_df = concat(rtd_duration, ignore_index=True)
 
         true_pos = self.df[(self.df["malicious"] == True) & (self.df["mal_pred"] == True)]
-        self.df["lat_diff"] = (self.df["latency"] - self.df["lat_pred"]) / self.df["lat_pred"]
-        self.df["mon_diff"] = (self.df["lat_mon"] - self.df["lat_pred"]) / self.df["lat_pred"]
-        self.df["mon_pred"] = self.df["mon_diff"] > 0.05
+        self.df["lat_diff"] = (self.df["latency"] - self.df["lat_pred"])
 
         print("\nTest recall:    {}"  .format(round(   recall_score(self.df["malicious"], self.df["mal_pred"]),           3)))
         print(  "Test precision: {}"  .format(round(precision_score(self.df["malicious"], self.df["mal_pred"]),           3)))
@@ -85,18 +83,3 @@ class Eval:
 
         print("")
         print(confusion_matrix(self.df["malicious"], self.df["mal_pred"], labels=[True, False]))
-
-        print("\nMon. recall:    {}"  .format(round(   recall_score(self.df["malicious"], self.df["mon_pred"]),           3)))
-        print(  "Mon. precision: {}"  .format(round(precision_score(self.df["malicious"], self.df["mon_pred"]),           3)))
-        print(  "Mon. F1:        {}"  .format(round(       f1_score(self.df["malicious"], self.df["mon_pred"]),           3)))
-        
-        print("\nMin. diff FP:   {}".format(self.df[(self.df["mon_pred"] == True) & (self.df["malicious"] == False)]["mon_diff"].min()))
-        print(  "Max. diff FP:   {}".format(self.df[(self.df["mon_pred"] == True) & (self.df["malicious"] == False)]["mon_diff"].max()))
-        print(  "Avg. diff FP:   {}".format(self.df[(self.df["mon_pred"] == True) & (self.df["malicious"] == False)]["mon_diff"].mean()))
-
-        print("")
-        print(confusion_matrix(self.df["malicious"], self.df["mon_pred"], labels=[True, False]))
-
-
-        print("")
-        print(self.df[(self.df["mal_pred"] == True) & (self.df["lat_mon"] != self.df["latency"])])
