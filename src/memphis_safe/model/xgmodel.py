@@ -1,92 +1,59 @@
-from numpy import sqrt
 from pandas import read_csv, get_dummies
 from yaspin import yaspin
-from math import ceil
-from xgboost import XGBRegressor, to_graphviz,plot_tree
-from sklearn.model_selection import cross_val_score
-from .neg_mape import neg_mean_percentage_error
-from numpy import ones
+from sklearn.metrics import root_mean_squared_error
+from xgboost import XGBRegressor
+from sklearn.model_selection import train_test_split
 
 class XGModel:
     def __init__(self, name):
         self.name       = name
 
         with yaspin(text="Loading train dataset...") as spinner:
-            self.X         = read_csv(name)
+            X         = read_csv(name)
+            y         = X[["latency"]]
+            X         = X[["rel_time", "prod", "cons", "hops", "size"]]
+            X["prod"] = X["prod"].astype("category")
+            X["cons"] = X["cons"].astype("category")
+            X         = get_dummies(X, columns=["prod", "cons"])
 
-            self.y         = self.X[["latency"]]
-            self.X         = self.X[["rel_time", "prod", "cons", "hops", "size"]]
-            self.X["prod"] = self.X["prod"].astype("category")
-            self.X["cons"] = self.X["cons"].astype("category")
-            self.X         = get_dummies(self.X, columns=["prod", "cons"])
+            self.X_train_full, self.X_test, self.y_train_full, self.y_test = train_test_split(
+                X, 
+                y, 
+                test_size=0.2,
+                random_state=7
+            )
+
+            self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
+                self.X_train_full, 
+                self.y_train_full, 
+                test_size=0.2,
+                random_state=7
+            )
+
             spinner.ok()
 
-    def __get_score(self, cv_k, n_estimators, max_depth):
-        # model = XGBRegressor(base_score=50, n_estimators=n_estimators, max_depth=max_depth, min_child_weight=5, gamma=1, reg_lambda=1, subsample=0.8, colsample_bytree=0.8, eta=0.2)
-        model = XGBRegressor(base_score=50, n_estimators=n_estimators, max_depth=max_depth, objective='reg:squarederror')
-        scores = cross_val_score(model, self.X, self.y, scoring='neg_root_mean_squared_error', cv=cv_k)
-        score = -scores
-        return score, model
-
-    def train(self, cv_k, n_estimators=None, max_depth=None):
-        last_good_n_estimators = 100 if n_estimators is None else n_estimators
-        last_good_max_depth = 6 if max_depth is None else max_depth
+    def train(self):
         print("\n", end="")
-        with yaspin(text="Training base model...") as spinner:
-            last_good_score, last_good_model = self.__get_score(cv_k, last_good_n_estimators, last_good_max_depth)
+        with yaspin(text="Evaluating model...") as spinner:
+            # model = XGBRegressor(base_score=50, n_estimators=n_estimators, max_depth=max_depth, min_child_weight=5, gamma=1, reg_lambda=1, subsample=0.8, colsample_bytree=0.8, eta=0.2)
+            eval = XGBRegressor(base_score=50, objective='reg:squarederror', early_stopping_rounds=5)
+            eval.fit(self.X_train, self.y_train, eval_set=[(self.X_val, self.y_val)], verbose=False)
             spinner.ok()
 
-        print("Base cross-validation mean RMSE: {}".format(round(last_good_score.mean(), 3)))
-        print("Base cross-validation RMSE std dev: {}".format(round(last_good_score.std(), 3)))
-        print("{}-fold base cross-validation scores:".format(cv_k))
-        print(last_good_score)
+        print("Stopped at iteration {}".format(eval.best_iteration))
+        print("Model selection/tuning lines: {}".format(self.X_train.shape[0]))
+        print("Model selection/tuning RMSE: {} -- do not report this data".format(round(eval.evals_result()["validation_0"]["rmse"][eval.best_iteration], 3)))
 
-        if n_estimators is None and max_depth is None:
-            with yaspin(text="Finding smallest model...") as spinner:
-                max_score = last_good_score.mean() * 1.1
+        print("\n", end="") 
+        with yaspin(text="Training and testing final model...") as spinner:
+            model = XGBRegressor(base_score=50, objective='reg:squarederror', n_estimators=eval.best_iteration)
+            model.fit(self.X_train_full, self.y_train_full)
+            y_pred = model.predict(self.X_test)
+            rmse   = root_mean_squared_error(self.y_test, y_pred)
+            spinner.ok()
 
-                last_bad_n_estimators = 0
-                while True:
-                    n_estimators = round((last_good_n_estimators+last_bad_n_estimators) / 2)
-                    if n_estimators in [last_good_n_estimators, last_bad_n_estimators]:
-                        break
-                    print("Trying {} estimators".format(n_estimators))
-                    score, model = self.__get_score(cv_k, n_estimators, last_good_max_depth)
-                    last_score = score.mean()
-                    if last_score < max_score:
-                        last_good_model = model
-                        last_good_score = score
-                        last_good_n_estimators = n_estimators
-                    else:
-                        last_bad_n_estimators = n_estimators
-
-                last_bad_max_depth = 3
-                while True:
-                    max_depth = round((last_good_max_depth+last_bad_max_depth) / 2)
-                    if max_depth in [last_good_max_depth, last_bad_max_depth]:
-                        break
-                    print("Trying depth {}".format(max_depth))
-                    score, model = self.__get_score(cv_k, last_good_n_estimators, max_depth)
-                    last_score = score.mean()
-                    if last_score < max_score:
-                        last_good_model = model
-                        last_good_score = score
-                        last_good_max_depth = max_depth
-                    else:
-                        last_bad_max_depth = max_depth
-                    
-                spinner.ok()
-
-        # last_good_model.fit(self.X, self.y, sample_weight=self.weights)
-        last_good_model.fit(self.X, self.y)
-
-        print("n_estimators={}; max_depth={}".format(last_good_n_estimators, last_good_max_depth))
-        print("Final cross-validation RMSE mean:    {}".format(round(last_good_score.mean(), 3)))
-        print("Final cross-validation RMSE std dev: {}".format(round(last_good_score.std(), 3)))
-        print("Final cross-validation RMSE min:     {}".format(round(last_good_score.min(), 3)))
-        print("Final cross-validation RMSE max:     {}".format(round(last_good_score.max(), 3)))
-        print("{}-fold base cross-validation scores:".format(cv_k))
-        print(last_good_score)
+        print("Model training lines: {}".format(self.X_train_full.shape[0]))
+        print("Test RMSE: {}".format(round(rmse, 3)))
 
         print("", end="\n")
         with yaspin(text="Exporting model...") as spinner:
@@ -97,8 +64,8 @@ class XGModel:
             path   = "."
             if len(tokens) > 1:
                 path   = "/".join(tokens[0:-1])
-            full_name = "{}/{}_e{}_d{}".format(path, name, last_good_n_estimators, last_good_max_depth)
-            last_good_model.save_model("{}_model.json".format(full_name))
+            full_name = "{}/{}_e{}".format(path, name, model.n_estimators)
+            model.save_model("{}_model.json".format(full_name))
             spinner.ok()
 
         print("Model exported to {}_model.json".format(full_name))
