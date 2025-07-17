@@ -32,7 +32,7 @@ class Safe:
             # y_pred["latency"]  = self.df["latency"]
             # y_pred["real_mal"] = self.df["malicious"]
             y_pred["lat_pred"] = self.model.predict(self.X)
-            y_pred["lat_diff"] = (self.df["latency"] - y_pred["lat_pred"]) / y_pred["lat_pred"]
+            y_pred["lat_diff"] = (self.df["latency"] - y_pred["lat_pred"])
             y_pred["mal_pred"] = y_pred["lat_diff"] > threshold
             spinner.ok()
 

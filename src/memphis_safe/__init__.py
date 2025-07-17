@@ -16,7 +16,7 @@ def memphis_safe():
     test_parser = subparsers.add_parser("test", help="Test model")
     test_parser.add_argument("MODEL",   help="Model to test")
     test_parser.add_argument("DATASET", help="Dataset to test")
-    test_parser.add_argument("-t", "--threshold", help="Latency threshold to consider an anomaly", default=0.05, type=float)
+    test_parser.add_argument("-t", "--threshold", help="Latency threshold to consider an anomaly", default=24, type=float)
 
     eval_parser = subparsers.add_parser("eval", help="Show real-time detection metrics")
     eval_parser.add_argument("TESTCASE", help="Path to testcase to extract application time")
