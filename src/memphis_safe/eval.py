@@ -8,6 +8,7 @@ from yaml import safe_load
 
 class Eval:
     def __init__(self, testcase, dataset):
+        self.test_name = dataset
         with yaspin(text="Loading RTD dataset...") as spinner:
             self.df = read_csv(dataset)
             spinner.ok()
@@ -62,12 +63,19 @@ class Eval:
         true_pos = self.df[(self.df["malicious"] == True) & (self.df["mal_pred"] == True)]
         self.df["lat_diff"] = (self.df["latency"] - self.df["lat_pred"])
 
-        print("\nTest recall:    {}"  .format(round(   recall_score(self.df["malicious"], self.df["mal_pred"]),           3)))
-        print(  "Test precision: {}"  .format(round(precision_score(self.df["malicious"], self.df["mal_pred"]),           3)))
-        print(  "Test F1:        {}"  .format(round(       f1_score(self.df["malicious"], self.df["mal_pred"]),           3)))
-        print(  "Avg. inf. lat.: {}"  .format(round(true_pos["inf_lat"].mean()/100.0,                                     3)))
-        print(  "Avg. det. lat.: {}"  .format(round(true_pos["det_lat"].mean()/100.0,                                     3)))
-        print(  "App time inc.:  {} %".format(round(((rtd_df["duration"].mean() / base_df["duration"].mean())-1.0)*100.0, 2)))
+        recall    = round(   recall_score(self.df["malicious"], self.df["mal_pred"]),           3)
+        precision = round(precision_score(self.df["malicious"], self.df["mal_pred"]),           3)
+        f1        = round(       f1_score(self.df["malicious"], self.df["mal_pred"]),           3)
+        inf       = round(true_pos["inf_lat"].mean()/100.0,                                     3)
+        det       = round(true_pos["det_lat"].mean()/100.0,                                     3)
+        inc       = round(((rtd_df["duration"].mean() / base_df["duration"].mean())-1.0)*100.0, 2)
+
+        print("\nTest recall:    {}"  .format(recall))
+        print(  "Test precision: {}"  .format(precision))
+        print(  "Test F1:        {}"  .format(f1))
+        print(  "Avg. inf. lat.: {}"  .format(inf))
+        print(  "Avg. det. lat.: {}"  .format(det))
+        print(  "App time inc.:  {} %".format(inc))
 
         print("\nMin. diff TP:   {}".format(self.df[(self.df["mal_pred"] == True) & (self.df["malicious"] == True)]["lat_diff"].min()))
         print(  "Max. diff TP:   {}".format(self.df[(self.df["mal_pred"] == True) & (self.df["malicious"] == True)]["lat_diff"].max()))
@@ -83,3 +91,15 @@ class Eval:
 
         print("")
         print(confusion_matrix(self.df["malicious"], self.df["mal_pred"], labels=[True, False]))
+
+        test_path = self.test_name.split(".")[-2]
+        name = "{}_report.txt".format(test_path)
+        with open(name, "w") as f:
+            f.write(str(recall)+"\n")
+            f.write(str(precision)+"\n")
+            f.write(str(f1)+"\n")
+            f.write(str(inf)+"\n")
+            f.write(str(det)+"\n")
+            f.write(str(inc)+"\n")
+        
+        print("Report exported to {}".format(name))
