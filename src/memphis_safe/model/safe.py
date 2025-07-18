@@ -64,7 +64,7 @@ class Safe:
 
         with yaspin(text="Exporting report...") as spinner:
             test_path = "_".join(self.test_name.split(".")[-2].split("_")[:-1])
-            model_params = "_".join(self.model_name.split("_")[-3:-1])
+            model_params = "_".join(self.model_name.split("_")[-2:-1])
             name = "{}_{}_tested.csv".format(test_path, model_params)
             self.df.to_csv(name, index=False)
             spinner.ok()
