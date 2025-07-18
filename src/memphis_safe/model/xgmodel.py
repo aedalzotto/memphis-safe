@@ -2,7 +2,7 @@ from pandas import read_csv, get_dummies
 from yaspin import yaspin
 from sklearn.metrics import root_mean_squared_error
 from xgboost import XGBRegressor
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 
 class XGModel:
     def __init__(self, name):
@@ -32,21 +32,39 @@ class XGModel:
 
             spinner.ok()
 
+        self.param_grid = {
+            'eta': [0.3, 0.4, 0.5], # default 0.3
+            'gamma': [0.5, 0.7, 0.9], # default 0
+            # 'max_depth': [3, 4, 5], # default 6           
+            'min_child_weight': [3, 4, 5], # default 1
+            # 'subsample': [0.7, 0.8, 0.9], # default 1.0
+            'alpha': [0.3, 0.5, 0.7], # default 0
+        }
+
     def train(self):
         print("\n", end="")
-        with yaspin(text="Evaluating model...") as spinner:
-            # model = XGBRegressor(base_score=50, n_estimators=n_estimators, max_depth=max_depth, min_child_weight=5, gamma=1, reg_lambda=1, subsample=0.8, colsample_bytree=0.8, eta=0.2)
-            eval = XGBRegressor(base_score=50, objective='reg:squarederror', early_stopping_rounds=5)
-            eval.fit(self.X_train, self.y_train, eval_set=[(self.X_val, self.y_val)], verbose=False)
-            spinner.ok()
+        # reg:absoluteerror
+        eval = XGBRegressor(early_stopping_rounds=5)
+        grid_search = GridSearchCV(
+            estimator=eval,
+            param_grid=self.param_grid,
+            scoring='neg_root_mean_squared_error',
+            cv=3,
+            verbose=2, # Shows progress
+            n_jobs=-1
+        )
+        grid_search.fit(self.X_train, self.y_train, eval_set=[(self.X_val, self.y_val)], verbose=False)
 
-        print("Stopped at iteration {}".format(eval.best_iteration))
+        print("\n", end="")
         print("Model selection/tuning lines: {}".format(self.X_train.shape[0]))
-        print("Model selection/tuning RMSE: {} -- do not report this data".format(round(eval.evals_result()["validation_0"]["rmse"][eval.best_iteration], 3)))
+        print("Model selection/tuning RMSE: {} -- do not report this data".format(round(-grid_search.best_score_, 3)))
+        print("Stopped at iteration {}".format(grid_search.best_estimator_.best_iteration))
+        print("Best parameters found: ")
+        print(grid_search.best_params_)
 
         print("\n", end="") 
         with yaspin(text="Training and testing final model...") as spinner:
-            model = XGBRegressor(base_score=50, objective='reg:squarederror', n_estimators=eval.best_iteration)
+            model = XGBRegressor(n_estimators=grid_search.best_estimator_.best_iteration, **grid_search.best_params_)
             model.fit(self.X_train_full, self.y_train_full)
             y_pred = model.predict(self.X_test)
             rmse   = root_mean_squared_error(self.y_test, y_pred)
@@ -66,6 +84,8 @@ class XGModel:
                 path   = "/".join(tokens[0:-1])
             full_name = "{}/{}_e{}".format(path, name, model.n_estimators)
             model.save_model("{}_model.json".format(full_name))
+            with open("{}_info.txt".format(full_name), "w") as f:
+                f.write(str(grid_search.best_params_)+"\n")
             spinner.ok()
 
         print("Model exported to {}_model.json".format(full_name))
