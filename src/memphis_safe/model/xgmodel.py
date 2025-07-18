@@ -42,8 +42,6 @@ class XGModel:
         }
 
     def train(self):
-        print("\n", end="")
-        # reg:absoluteerror
         eval = XGBRegressor(early_stopping_rounds=5)
         grid_search = GridSearchCV(
             estimator=eval,
