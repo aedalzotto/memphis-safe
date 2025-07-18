@@ -84,6 +84,8 @@ class XGModel:
             model.save_model("{}_model.json".format(full_name))
             with open("{}_info.txt".format(full_name), "w") as f:
                 f.write(str(grid_search.best_params_)+"\n")
+                f.write(str(self.X_train_full.shape[0])+"\n")
+                f.write(str(rmse)+"\n")
             spinner.ok()
 
         print("Model exported to {}_model.json".format(full_name))
