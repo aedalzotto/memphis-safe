@@ -3,6 +3,7 @@ from yaspin import yaspin
 from sklearn.metrics import root_mean_squared_error
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split, GridSearchCV
+from .score import TargetRMSECallback, neg_estimators
 
 class XGModel:
     def __init__(self, name):
@@ -42,33 +43,35 @@ class XGModel:
         }
 
     def train(self):
-        eval = XGBRegressor(early_stopping_rounds=5, n_estimators=50)
+        eval = XGBRegressor(callbacks=[TargetRMSECallback(target_rmse=3.0)])
         grid_search = GridSearchCV(
             estimator=eval,
             param_grid=self.param_grid,
-            scoring='neg_root_mean_squared_error',
+            scoring=neg_estimators,
             cv=3,
-            verbose=2, # Shows progress
+            verbose=2,
             n_jobs=-1
         )
         grid_search.fit(self.X_train, self.y_train, eval_set=[(self.X_val, self.y_val)], verbose=False)
 
+        estimators = -neg_estimators(grid_search.best_estimator_)
+
         print("\n", end="")
         print("Model selection/tuning lines: {}".format(self.X_train.shape[0]))
-        print("Model selection/tuning RMSE: {} -- do not report this data".format(round(-grid_search.best_score_, 3)))
-        print("Stopped at iteration {}".format(grid_search.best_estimator_.best_iteration))
+        print("Stopped at iteration {}".format(estimators))
         print("Best parameters found: ")
         print(grid_search.best_params_)
 
         print("\n", end="") 
         with yaspin(text="Training and testing final model...") as spinner:
-            model = XGBRegressor(n_estimators=grid_search.best_estimator_.best_iteration, **grid_search.best_params_)
+            model = XGBRegressor(n_estimators=estimators, **grid_search.best_params_)
             model.fit(self.X_train_full, self.y_train_full)
             y_pred = model.predict(self.X_test)
             rmse   = root_mean_squared_error(self.y_test, y_pred)
             spinner.ok()
 
-        print("Model training lines: {}".format(self.X_train_full.shape[0]))
+        lines = self.X_train_full.shape[0]
+        print("Model training lines: {}".format(lines))
         print("Test RMSE: {}".format(round(rmse, 3)))
 
         print("", end="\n")
@@ -84,7 +87,7 @@ class XGModel:
             model.save_model("{}_model.json".format(full_name))
             with open("{}_info.txt".format(full_name), "w") as f:
                 f.write(str(grid_search.best_params_)+"\n")
-                f.write(str(self.X_train_full.shape[0])+"\n")
+                f.write(str(lines)+"\n")
                 f.write(str(rmse)+"\n")
             spinner.ok()
 
