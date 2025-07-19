@@ -34,15 +34,15 @@ class XGModel:
 
         self.param_grid = {
             'eta': [0.3, 0.4, 0.5], # default 0.3
-            'gamma': [0.5, 0.7, 0.9], # default 0
-            # 'max_depth': [3, 4, 5], # default 6           
+            'gamma': [0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3], # default 0
             'min_child_weight': [3, 4, 5], # default 1
+            # 'max_depth': [3, 4, 5], # default 6
             # 'subsample': [0.7, 0.8, 0.9], # default 1.0
-            'alpha': [0.3, 0.5, 0.7], # default 0
+            # 'alpha': [0.3, 0.5, 0.7], # default 0
         }
 
     def train(self):
-        eval = XGBRegressor(early_stopping_rounds=5)
+        eval = XGBRegressor(early_stopping_rounds=5, n_estimators=50)
         grid_search = GridSearchCV(
             estimator=eval,
             param_grid=self.param_grid,
