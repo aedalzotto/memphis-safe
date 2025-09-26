@@ -4,18 +4,19 @@ from sklearn.metrics import root_mean_squared_error
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split, GridSearchCV
 from .score import TargetRMSECallback, neg_estimators
+from sklearn.linear_model import LinearRegression
 
 class XGModel:
     def __init__(self, name):
         self.name       = name
 
         with yaspin(text="Loading train dataset...") as spinner:
-            X         = read_csv(name)
-            y         = X[["latency"]]
-            X         = X[["rel_time", "prod", "cons", "hops", "size"]]
-            X["prod"] = X["prod"].astype("category")
-            X["cons"] = X["cons"].astype("category")
-            X         = get_dummies(X, columns=["prod", "cons"])
+            self.dataset = read_csv(name)
+            y            = self.dataset[["latency"]]
+            X            = self.dataset[["rel_time", "prod", "cons", "hops", "size"]]
+            X["prod"]    = X["prod"].astype("category")
+            X["cons"]    = X["cons"].astype("category")
+            X            = get_dummies(X, columns=["prod", "cons"])
 
             self.X_train_full, self.X_test, self.y_train_full, self.y_test = train_test_split(
                 X, 
@@ -42,8 +43,30 @@ class XGModel:
             # 'alpha': [0.3, 0.5, 0.7], # default 0
         }
 
+    def linear(self):
+        reg = LinearRegression().fit(self.X_train_full, self.y_train_full)
+        y_pred = reg.predict(self.X_test)
+        rmse   = root_mean_squared_error(self.y_test, y_pred)
+        print("Linear Regression Test RMSE: {}".format(round(rmse, 3)))
+
+        print(self.X_train_full.columns)
+
+        coefficients = reg.coef_
+        print(f"Coefficients: {coefficients}")
+
+        intercept = reg.intercept_
+        print(f"Intercept: {intercept}")
+
+    def avg(self):
+        for prod in self.dataset["prod"].unique():
+            for cons in self.dataset[self.dataset["prod"] == prod]["cons"].unique():
+                avg = self.dataset[(self.dataset["prod"] == prod) & (self.dataset["cons"] == cons)]["latency"].mean()
+                print("{}-{} = {}".format(prod, cons, avg))
+        
+        print("Default = {}".format(self.dataset["latency"].mean()))
+
     def train(self):
-        eval = XGBRegressor(callbacks=[TargetRMSECallback(target_rmse=3.0)])
+        eval = XGBRegressor(early_stopping_rounds=5, callbacks=[TargetRMSECallback(target_rmse=3.0)])
         grid_search = GridSearchCV(
             estimator=eval,
             param_grid=self.param_grid,

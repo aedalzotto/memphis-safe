@@ -10,6 +10,12 @@ def memphis_safe():
     train_parser = subparsers.add_parser("train",     help="Train model")
     train_parser.add_argument("TRAIN",                help="Train dataset to train model"                       )
 
+    linear_parser = subparsers.add_parser("linear",     help="Train model (linear)")
+    linear_parser.add_argument("TRAIN",                help="Train dataset to train model"                       )
+
+    avg_parser = subparsers.add_parser("avg",     help="Train model (avg)")
+    avg_parser.add_argument("TRAIN",                help="Train dataset to train model"                       )
+
     test_parser = subparsers.add_parser("test", help="Test model")
     test_parser.add_argument("MODEL",   help="Model to test")
     test_parser.add_argument("DATASET", help="Dataset to test")
@@ -23,6 +29,12 @@ def memphis_safe():
     if args.option == "train":
         model = XGModel(args.TRAIN)
         model.train()
+    elif args.option == "linear":
+        model = XGModel(args.TRAIN)
+        model.linear()
+    elif args.option == "avg":
+        model = XGModel(args.TRAIN)
+        model.avg()
     elif args.option == "test":
         model = Safe(args.MODEL, args.DATASET)
         model.test(args.threshold)
