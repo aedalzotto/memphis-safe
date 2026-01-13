@@ -1,8 +1,9 @@
+from random import sample, seed
 from pandas import read_csv, get_dummies
 from yaspin import yaspin
 from sklearn.metrics import root_mean_squared_error
 from xgboost import XGBRegressor
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import cross_val_score, GridSearchCV
 from .score import TargetRMSECallback, neg_estimators
 from sklearn.linear_model import LinearRegression
 
@@ -12,25 +13,33 @@ class XGModel:
 
         with yaspin(text="Loading train dataset...") as spinner:
             self.dataset = read_csv(name)
-            y            = self.dataset[["latency"]]
-            X            = self.dataset[["rel_time", "prod", "cons", "hops", "size"]]
-            X["prod"]    = X["prod"].astype("category")
-            X["cons"]    = X["cons"].astype("category")
-            X            = get_dummies(X, columns=["prod", "cons"])
 
-            self.X_train_full, self.X_test, self.y_train_full, self.y_test = train_test_split(
-                X, 
-                y, 
-                test_size=0.2,
-                random_state=7
-            )
+            scenarios = list(self.dataset["scenario"].unique())
+            seed(7)
+            train_scenarios = sample(scenarios, int(len(scenarios)*0.75))
+            val_scenarios  = list(set(scenarios) - set(train_scenarios))
 
-            self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(
-                self.X_train_full, 
-                self.y_train_full, 
-                test_size=0.2,
-                random_state=7
-            )
+            train = self.dataset[self.dataset["scenario"].isin(train_scenarios)]
+            # self.weights_train = train["weight"].values
+            val   = self.dataset[self.dataset["scenario"].isin(val_scenarios)]
+
+            self.y_full         = self.dataset[["latency"]]
+            self.X_full         = self.dataset[["rel_time", "prod", "cons", "hops", "size"]]
+            self.X_full["prod"] = self.X_full["prod"].astype("category")
+            self.X_full["cons"] = self.X_full["cons"].astype("category")
+            self.X_full         = get_dummies(self.X_full, columns=["prod", "cons"])
+
+            self.y_train         = train[["latency"]]
+            self.X_train         = train[["rel_time", "prod", "cons", "hops", "size"]]
+            self.X_train["prod"] = self.X_train["prod"].astype("category")
+            self.X_train["cons"] = self.X_train["cons"].astype("category")
+            self.X_train         = get_dummies(self.X_train, columns=["prod", "cons"])
+
+            self.y_val         = val[["latency"]]
+            self.X_val         = val[["rel_time", "prod", "cons", "hops", "size"]]
+            self.X_val["prod"] = self.X_val["prod"].astype("category")
+            self.X_val["cons"] = self.X_val["cons"].astype("category")
+            self.X_val         = get_dummies(self.X_val, columns=["prod", "cons"])
 
             spinner.ok()
 
@@ -44,12 +53,8 @@ class XGModel:
         }
 
     def linear(self):
-        reg = LinearRegression().fit(self.X_train_full, self.y_train_full)
-        y_pred = reg.predict(self.X_test)
-        rmse   = root_mean_squared_error(self.y_test, y_pred)
-        print("Linear Regression Test RMSE: {}".format(round(rmse, 3)))
-
-        print(self.X_train_full.columns)
+        reg = LinearRegression().fit(self.X_full, self.y_full)
+        print(self.X_full.columns)
 
         coefficients = reg.coef_
         print(f"Coefficients: {coefficients}")
@@ -66,18 +71,17 @@ class XGModel:
         print("Default = {}".format(self.dataset["latency"].mean()))
 
     def train(self):
-        eval = XGBRegressor(early_stopping_rounds=5, callbacks=[TargetRMSECallback(target_rmse=3.0)])
+        eval = XGBRegressor(early_stopping_rounds=5, n_estimators=33)
         grid_search = GridSearchCV(
             estimator=eval,
             param_grid=self.param_grid,
-            scoring=neg_estimators,
-            cv=3,
+            scoring='neg_root_mean_squared_error',
+            cv=5,
             verbose=2,
             n_jobs=-1
         )
         grid_search.fit(self.X_train, self.y_train, eval_set=[(self.X_val, self.y_val)], verbose=False)
-
-        estimators = -neg_estimators(grid_search.best_estimator_)
+        estimators = grid_search.best_estimator_.best_iteration+1
 
         print("\n", end="")
         print("Model selection/tuning lines: {}".format(self.X_train.shape[0]))
@@ -85,17 +89,17 @@ class XGModel:
         print("Best parameters found: ")
         print(grid_search.best_params_)
 
-        print("\n", end="") 
-        with yaspin(text="Training and testing final model...") as spinner:
+        lines = self.X_train.shape[0]
+        print("Validation training lines: {}".format(lines))
+        print("Validation mean RMSE: {}".format(-round(grid_search.best_score_, 3)))
+
+        with yaspin(text="Fitting final model...") as spinner:
             model = XGBRegressor(n_estimators=estimators, **grid_search.best_params_)
-            model.fit(self.X_train_full, self.y_train_full)
-            y_pred = model.predict(self.X_test)
-            rmse   = root_mean_squared_error(self.y_test, y_pred)
+            model.fit(self.X_full, self.y_full)
             spinner.ok()
 
-        lines = self.X_train_full.shape[0]
-        print("Model training lines: {}".format(lines))
-        print("Test RMSE: {}".format(round(rmse, 3)))
+        lines = self.X_full.shape[0]
+        print("Full training lines: {}".format(lines))
 
         print("", end="\n")
         with yaspin(text="Exporting model...") as spinner:
@@ -111,7 +115,7 @@ class XGModel:
             with open("{}_info.txt".format(full_name), "w") as f:
                 f.write(str(grid_search.best_params_)+"\n")
                 f.write(str(lines)+"\n")
-                f.write(str(rmse)+"\n")
+                f.write(str(grid_search.best_score_)+"\n")
             spinner.ok()
 
         print("Model exported to {}_model.json".format(full_name))
