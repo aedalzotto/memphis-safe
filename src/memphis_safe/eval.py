@@ -34,9 +34,9 @@ class Eval:
                     if line[0] == "$":
                         line = line.split("_")[-1]
                         tokens = line.split(" ")
-                        if tokens[0] == "RELEASE" and int(tokens[6]) == 1:
-                            beggining[int(tokens[6])] = int(tokens[3])
-                        elif tokens[0] == "App" and int(tokens[1]) == 1:
+                        if tokens[0] == "App" and tokens[2] == "started" and int(tokens[1]) == 1:
+                            beggining[int(tokens[1])] = int(tokens[4])
+                        elif tokens[0] == "App" and tokens[2] == "terminated" and int(tokens[1]) == 1:
                             end[int(tokens[1])] = int(tokens[5])
 
             lines = []
