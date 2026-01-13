@@ -15,7 +15,7 @@ class Eval:
 
         self.apps = None
         self.base_scenario = ["{}/{}".format(testcase, scenario) for scenario in listdir(testcase) if scenario.startswith("sc_") and scenario.endswith("_m")]
-        self.rtd_scenario  = ["{}/{}".format(testcase, scenario) for scenario in listdir(testcase) if scenario.startswith("sc_") and scenario.endswith("_rtd")]
+        self.rtd_scenario  = ["{}/{}".format(testcase, scenario) for scenario in listdir(testcase) if scenario.startswith("sc_") and scenario.endswith("_ht")]
 
     def __get_duration(scenario, apps):
             scen_name = scenario.split("/")[-1]
@@ -48,7 +48,6 @@ class Eval:
                 lines.append(line)
 
             return DataFrame(lines)
-
 
     def eval(self):
         apps = self.df["app"].unique()
