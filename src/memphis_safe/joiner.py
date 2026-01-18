@@ -33,5 +33,7 @@ class Joiner:
 
             spinner.ok()
 
-        self.rtd.to_csv("{}_joined.csv".format(self.name[:-4]), index=False)
-        print("Joined dataset saved to {}_joined.csv".format(self.name[:-4]))
+        print(self.rtd["malicious"].value_counts())
+
+        self.rtd.to_csv("{}_joined_{}.csv".format(self.name[:-4], self.threshold), index=False)
+        print("Joined dataset saved to {}_joined_{}.csv".format(self.name[:-4], self.threshold))
