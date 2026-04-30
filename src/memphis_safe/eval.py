@@ -59,7 +59,7 @@ class Eval:
             base_df = concat(base_duration, ignore_index=True)
 
             print("Extracting mapper logs from RTD scenario...")
-            rtd_duration  = Parallel(n_jobs=1)(delayed(Eval.__get_duration)(scenario, apps) for scenario in tqdm(self.rtd_scenario))
+            rtd_duration  = Parallel(n_jobs=-1)(delayed(Eval.__get_duration)(scenario, apps) for scenario in tqdm(self.rtd_scenario))
             rtd_df = concat(rtd_duration, ignore_index=True)
 
         true_pos = self.df[(self.df["malicious"] == True) & (self.df["mal_pred"] == True)]
@@ -69,22 +69,21 @@ class Eval:
         precision = round(precision_score(self.df["malicious"], self.df["mal_pred"]),           3)
         f1        = round(       f1_score(self.df["malicious"], self.df["mal_pred"]),           3)
         inf       = round(true_pos["inf_lat"].mean()/100.0,                                     3)
+        det       = round(true_pos["det_lat"].mean()/100.0,                                     3)
 
         print("\nTest recall:    {}"  .format(recall))
         print(  "Test precision: {}"  .format(precision))
         print(  "Test F1:        {}"  .format(f1))
         print(  "Avg. inf. lat.: {}"  .format(inf))
+        print(  "Avg. det. lat.: {}"  .format(det))
+
+        print("\nMin. HT FN:     {}".format(self.df[(self.df["mal_pred"] == False) & (self.df["malicious"] == True)]["mal_cycles"].min()))
+        print(  "Max. HT FN:     {}".format(self.df[(self.df["mal_pred"] == False) & (self.df["malicious"] == True)]["mal_cycles"].max()))
+        print(  "Avg. HT FN:     {}".format(self.df[(self.df["mal_pred"] == False) & (self.df["malicious"] == True)]["mal_cycles"].mean()))
 
         if self.testcase is not None:
-            det       = round(true_pos["det_lat"].mean()/100.0,                                     3)
-            print(  "Avg. det. lat.: {}"  .format(det))
-
             inc       = round(((rtd_df["duration"].mean() / base_df["duration"].mean())-1.0)*100.0, 2)
             print(  "App time inc.:  {} %".format(inc))
-
-            print("\nMin. HT FN:     {}".format(self.df[(self.df["mal_pred"] == False) & (self.df["malicious"] == True)]["mal_cycles"].min()))
-            print(  "Max. HT FN:     {}".format(self.df[(self.df["mal_pred"] == False) & (self.df["malicious"] == True)]["mal_cycles"].max()))
-            print(  "Avg. HT FN:     {}".format(self.df[(self.df["mal_pred"] == False) & (self.df["malicious"] == True)]["mal_cycles"].mean()))
 
         print("\nMin. diff TP:   {}".format(self.df[(self.df["mal_pred"] == True) & (self.df["malicious"] == True)]["lat_diff"].min()))
         print(  "Max. diff TP:   {}".format(self.df[(self.df["mal_pred"] == True) & (self.df["malicious"] == True)]["lat_diff"].max()))
